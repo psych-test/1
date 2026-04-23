@@ -2,157 +2,254 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>심리 진단 통합 시스템</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>심층 심리 분석 전문가 시스템 (관리자용)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #3730a3; --bg: #f8fafc; --white: #ffffff; }
-        /* 터치 반응 속도 개선 및 하이라이트 제거 */
-        * { box-sizing: border-box; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); padding: 20px; color: #334155; }
-        .container { max-width: 650px; margin: 0 auto; background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .step { display: none; }
-        .step.active { display: block; }
-        .mode-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
-        
-        /* [수정] 아이폰에서 클릭 인식을 방해하는 요소를 제거하고 터치 영역을 강화함 */
-        .mode-card { 
-            border: 2px solid #e2e8f0; padding: 20px; border-radius: 15px; text-align: center; 
-            cursor: pointer; transition: 0.3s; background: #fff; 
-            touch-action: manipulation; position: relative; z-index: 1;
+        :root { --primary: #3730a3; --bg: #f8fafc; --white: #ffffff; --border: #e2e8f0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; }
+        body { background: var(--bg); color: #1e293b; line-height: 1.7; }
+        .wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+        .sidebar { width: 100%; background: var(--white); border-bottom: 1px solid var(--border); padding: 20px; }
+        .main-content { flex: 1; padding: 20px; }
+        @media (min-width: 1024px) {
+            .wrapper { flex-direction: row; }
+            .sidebar { width: 380px; height: 100vh; position: sticky; top: 0; overflow-y: auto; border-right: 1px solid var(--border); }
+            .main-content { padding: 40px; }
         }
-        .mode-card.selected { border-color: var(--primary); background: #eef2ff; box-shadow: 0 4px 12px rgba(55,48,163,0.1); }
-        .mode-card h3, .mode-card p { pointer-events: none; } /* 글자가 클릭을 방해하지 못하게 설정 */
+        .card { background: var(--white); padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; border: 1px solid #f1f5f9; }
+        .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        .user-item { padding: 15px; border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px; background: #fff; cursor: pointer; }
+        .user-item.active { border-color: var(--primary); background: #f5f3ff; }
+        .chart-container { position: relative; height: 350px; width: 100%; margin: 20px 0; }
+        
+        /* 분석 섹션 스타일 */
+        .analysis-item { margin-bottom: 20px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid #eee; border-left-width: 6px; }
+        .v-high { border-left-color: #1e3a8a; background: #f0f7ff; } 
+        .high { border-left-color: #4338ca; background: #f5f3ff; }
+        .mid { border-left-color: #3b82f6; background: #f0f9ff; }
+        .low { border-left-color: #64748b; background: #f8fafc; }
+        .v-low { border-left-color: #94a3b8; background: #fdfdfd; }
 
-        .info-group { margin-bottom: 20px; }
-        .info-group label { display: block; margin-bottom: 8px; font-weight: 600; }
-        .info-group input, .info-group select { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; background: white; color: #334155; -webkit-appearance: none; }
-        .fixed-guide { position: sticky; top: 0; background: var(--primary); color: white; padding: 12px; border-radius: 10px; display: flex; justify-content: space-around; font-size: 0.75em; z-index: 100; margin-bottom: 20px; }
-        .q-box { border-bottom: 1px solid #f1f5f9; padding: 25px 0; }
-        .q-text { font-weight: 500; margin-bottom: 15px; line-height: 1.6; word-break: keep-all; }
-        .q-ops { display: flex; justify-content: space-between; gap: 6px; }
-        .q-ops input[type="radio"] { display: none; }
-        .q-ops label { width: 44px; height: 44px; border: 1.5px solid #cbd5e1; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 600; touch-action: manipulation; }
-        .q-ops input[type="radio"]:checked + label { background: var(--primary); color: white; border-color: var(--primary); }
-        .btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.05em; margin-top: 20px; touch-action: manipulation; }
-        .btn-home { background: #64748b; margin-top: 10px; }
-        textarea { width: 100%; height: 150px; margin: 20px 0; padding: 15px; border-radius: 12px; border: 1px solid #ddd; background: #f9fafb; font-family: monospace; resize: none; font-size: 0.85em; }
-        .copy-msg { display: none; text-align: center; color: #22c55e; font-weight: 600; margin-top: 10px; }
+        .score-badge { font-size: 0.8em; padding: 4px 12px; border-radius: 20px; color: white; font-weight: bold; float: right; }
+        .v-high .score-badge { background: #1e3a8a; } .high .score-badge { background: #4338ca; }
+        .mid .score-badge { background: #3b82f6; } .low .score-badge { background: #64748b; }
+        .v-low .score-badge { background: #94a3b8; }
+
+        .description { font-size: 0.95em; color: #334155; white-space: pre-line; margin-top: 10px; }
+        .lp-summary-box { background: #eff6ff; padding: 25px; border-radius: 15px; border: 1px solid #bfdbfe; margin-bottom: 30px; }
+        .training-tip { margin-top: 15px; padding: 15px; background: #ffffff; border-radius: 10px; border-left: 4px solid #10b981; font-size: 0.92em; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     </style>
 </head>
 <body>
-<div class="container">
-    <section id="step1" class="step active">
-        <h2 style="text-align:center;">심리 진단 서비스</h2>
-        <div class="mode-selector">
-            <div class="mode-card" id="mode50"><h3>자아상태</h3><p>50문항</p></div>
-            <div class="mode-card" id="mode40"><h3>인생태도</h3><p>40문항</p></div>
+
+<div class="wrapper">
+    <div class="sidebar">
+        <h2 style="margin-bottom:20px; color:var(--primary);">전문가용 심리 관리자</h2>
+        <input type="text" id="inputCode" style="width:100%; padding:12px; border:1.5px solid var(--border); border-radius:10px; margin-bottom:10px;" placeholder="데이터 코드를 입력하세요">
+        <button class="btn" onclick="decodeAndAdd()">리포트 정밀 분석</button>
+        <div id="userList" style="margin-top:25px;"></div>
+    </div>
+
+    <div class="main-content" id="detailView" style="display:none;">
+        <div class="card">
+            <h2 id="viewName">심층 심리 리포트</h2>
+            <p id="viewInfo" style="color:#64748b; font-size:0.9em;"></p>
+            <div class="chart-container"><canvas id="resultChart"></canvas></div>
         </div>
-        <div class="info-group"><label>성함</label><input type="text" id="u_name" placeholder="이름 입력"></div>
-        <div class="info-group"><label>나이</label><input type="number" id="u_age" placeholder="나이 입력" inputmode="numeric"></div>
-        <div class="info-group"><label>성별</label><select id="u_gender"><option value="남">남성</option><option value="여">여성</option></select></div>
-        <div class="info-group"><label>연락처</label><input type="tel" id="u_tel" placeholder="010-0000-0000"></div>
-        <button class="btn" id="startBtn">검사 시작하기</button>
-    </section>
 
-    <section id="step2" class="step">
-        <div id="test_title" style="text-align:center; font-weight:bold; margin-bottom:15px; color:var(--primary);"></div>
-        <div class="fixed-guide"><span>1:전혀아니다</span><span>2:아니다</span><span>3:보통</span><span>4:그렇다</span><span>5:매우그렇다</span></div>
-        <div id="q_list"></div>
-        <button class="btn" id="finishBtn">결과 생성하기</button>
-    </section>
+        <div id="analysisContainer"></div>
 
-    <section id="step3" class="step">
-        <h2 style="text-align:center;">검사가 완료되었습니다</h2>
-        <textarea id="resCode" readonly></textarea>
-        <button class="btn" id="copyBtn">분석 코드 복사하기</button>
-        <button class="btn btn-home" id="homeBtn">처음으로 돌아가기</button>
-        <p class="copy-msg" id="copyMsg">✓ 복사되었습니다!</p>
-    </section>
+        <div class="card">
+            <h3>종합 관리 제언</h3>
+            <textarea id="adminMemo" style="width:100%; height:150px; padding:15px; border-radius:12px; border:1.5px solid var(--border); margin:15px 0; font-size:16px;" placeholder="내담자의 변화 양상과 향후 상담 목표를 기록하세요"></textarea>
+            <button class="btn" onclick="saveMemo()">리포트 영구 저장</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    var selectedMode = null;
-    // (qs50, qs40 문항 데이터는 사용자님 코드의 것을 그대로 유지하세요)
-    var qs50 = ["사전에 계획을 잘 세우고 행동에 옮긴다.", "남의 잘못에 대해 그냥 넘어가지 않고 비판을 하거나 충고를 한다.", "밝게 행동하고 유머러스한 말을 하며 장난을 잘 친다.", "타인의 실수에 대하여 너그럽게 행동한다.", "다른 사람들과 논리적으로 차분하게 대화한다.", "어른들이나 윗사람 앞에서 우물쭈물한다.", "대화할 때 상대방의 말을 가로막고 내 생각을 먼저 말한다.", "슬프거나 기분이 울적할 때가 종종 있다.", "상대방의 실수를 지적하고 고치려고 한다.", "기쁘거나 화가 날 때 감추지 않고 바로 표현한다.", "남에게 받기보다는 베푸는 것을 좋아한다.", "어떤 일이든 감정에 치우치지 않고 있는 사실에 근거하여 판단한다.", "다른 사람의 표정을 보고 행동하는 버릇이 있다.", "나보다는 타인의 입장을 먼저 생각한다.", "삐뚤어지거나 잘못된 것이 있으면 즉시 지적한다.", "화려한 색깔의 옷이나 신발 등을 좋아한다.", "다른 사람의 입장을 헤아려 먼저 양보를 잘한다.", "창의적이고 예술적 감각이 뛰어나다.", "나 자신의 생각을 양보하지 않고 끝까지 주장한다.", "미래에 대하여 철저하게 계획하고 행동한다.", "어떤 일을 할 때 적극적으로 나서지 못한다.", "재미있는 말과 행동으로 분위기를 잘 이끌어 간다.", "내 가치관에 입각하여 내 생각을 서슴없이 말한다.", "다른 사람을 헐뜯는 것보다는 칭찬하기를 좋아한다.", "다른 사람의 의견보다는 내 의견을 우선적으로 내세운다.", "어떤 행동을 하기 전에 깊이 생각을 한다.", "매사를 긍정적으로 생각하며 즐겁게 지낸다.", "남을 잘 이해하고 배려한다.", "미래의 일에 대해 예측하기를 좋아한다.", "매사에 조심스러우며 소극적으로 행동한다.", "다른 사람을 무시하는 말을 잘한다.", "남보다 부족하고 못 하는 것이 많다고 생각한다.", "신이 날 때는 도가 지나쳐 실수를 할 때도 있다.", "어떤 일이든 시작하면 계획한 대로 차근차근 진행해 나간다.", "다른 사람을 비난하기보다는 수용하고 공감한다.", "꼼꼼하고 계획적이며 계산적인 사람이라는 소리를 듣는다.", "어떤 일을 추진할 때 과감하게 행동하지 못한다.", "노래를 부르거나 춤추는 것을 좋아한다.", "주어진 일을 정확하고 분명하게 처리한다.", "다른 사람 돌보는 일을 좋아한다.", "싫은 것은 싫다고 분명하게 그 자리에서 말하지 못한다.", "'반드시', '당연히'라는 말을 자주 사용한다.", "다른 사람들에게 스스럼없이 감정 표현을 잘한다.", "'~해', '~하지 않으면 안 돼'라는 표현을 자주 사용한다.", "다른 사람의 단점보다는 장점을 더 잘 본다.", "공부, 일, 업무, 아르바이트 같은 것을 효율적으로 잘 처리한다.", "다른 사람과 비교하면서 열등감에 빠질 때가 많다.", "농담이나 짓궂은 행동을 잘한다.", "나 자신의 감정(느낌)을 억누르거나 무시해 버리는 경우가 많다.", "친구나 나보다 나이가 적은 사람들을 잘 챙긴다."];
-    var qs40 = ["다른 사람에 대한 평가 기준이 엄격하다.","다른 사람도 나만큼 잘 할 수 있다고 생각한다.","내가 잘못을 하거나 실수를 하는 경우에도 나 자신을 긍정적으로 바라본다.","나 자신을 쓸모없는 인간이라고 생각한다.","다른 사람이 친절을 베풀어도 일단 의심해 본다.","사람들은 누구나 실수나 실패를 할 수 있다.","나는 무슨 일이든 '하면 된다'라고 생각하는 사람이다.","나는 자신의 행동이나 말에 자신감을 갖지 못한다.","나는 상대방을 비난하거나 꼼짝 못 하게 하려고 할 때가 있다.","다른 사람을 진심으로 격려한다.","'당신과 같이 있으면 즐겁다'라는 말을 자주 듣는다.","나 자신의 용모나 외모에 자신이 없다.","다른 사람의 장점보다 단점을 잘 찾아낸다.","상대의 좋지 않은 면을 보더라도 나는 그 사람과 사귈 수 있다고 생각한다.","나의 속마음을 다른 사람에게 솔직하게 표현한다.","'나는 쓸모없는 사람이야!'라고 생각하는 경우가 종종 있다.","나는 성격과 취향이 맞지 않는 사람과는 사귀고 싶지 않다.","누구든지 자신의 의견이나 의사를 말할 권리가 있다.","나는 매사에 적극적으로 활동하는 편이다.","나는 무엇을 해도 잘 되지 않는다는 느낌이 들 때가 종종 있다.","다른 사람의 결점이 하나라도 눈에 띄면 그 사람의 전부가 싫어진다.","나에 대해 부정적인 생각을 가진 사람과도 대화할 수 있다.","나 자신의 얼굴이나 모습에 매력이 있다고 생각한다.","내가 이 세상에 태어난 것에 대해 그다지 환영받지 못했다고 생각한다.","모르는 사람을 만나면 일단 의심부터 한다.","사람들은 모두 존중받을 권리가 있다.","나 자신에게는 아직 숨은 재능이 많이 있다고 생각한다.","나는 결심한 것을 실천하는 것이 쉽지 않다.","다툼이나 싸움이 일어나면 상대방을 먼저 탓한다.","다른 사람의 일이 잘될 때 진심으로 박수를 쳐준다.","다른 사람들 앞에서 불안해하거나 긴장하지 않고 자연스럽게 말할 수 있다.","어떤 기회가 주어졌을 때 능력이 부족하다는 생각으로 포기하는 경우가 종종 있다.","상대방이 내 기대에 못 미치면 화가 난다.","모든 사람은 소중한 존재로 이 세상에 태어났다고 생각한다.","나는 실패를 두려워하지 않는다.","나 자신이 불필요한 존재라고 생각할 때가 더러 있다.","나는 평소 다른 사람을 그다지 칭찬하지 않는다.","다른 사람의 행동이나 사고방식이 나와 다르다 할지라도 싫어하지는 않는다.","나는 다른 사람으로부터 신뢰받는 사람이라고 생각한다.","나는 나 자신을 그다지 존중하지 않는다."];
+    let db = JSON.parse(localStorage.getItem('Psych_Expert_DB_V6')) || [];
+    let activeIdx = null;
+    let myChart = null;
 
-    // [중요] 아이폰 전용 클릭 리스너 설정
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('mode50').addEventListener('click', function() { selectMode(50); });
-        document.getElementById('mode40').addEventListener('click', function() { selectMode(40); });
-        document.getElementById('startBtn').addEventListener('click', function() { goStep(2); });
-        document.getElementById('finishBtn').addEventListener('click', finish);
-        document.getElementById('copyBtn').addEventListener('click', copyCode);
-        document.getElementById('homeBtn').addEventListener('click', goHome);
-    });
-
-    function selectMode(m) {
-        selectedMode = m;
-        document.querySelectorAll('.mode-card').forEach(function(c) { c.classList.remove('selected'); });
-        document.getElementById('mode' + m).classList.add('selected');
-    }
-
-    function goStep(n) {
-        if (n === 2) {
-            if (!selectedMode) { alert("검사항목을 선택해 주세요."); return; }
-            if (!document.getElementById('u_name').value.trim()) { alert("성함을 입력해 주세요."); return; }
-        }
-        document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
-        document.getElementById('step' + n).classList.add('active');
-        if (n === 2) renderQuestions();
-        window.scrollTo(0, 0);
-    }
-
-    function renderQuestions() {
-        var container = document.getElementById('q_list');
-        var list = (selectedMode === 50) ? qs50 : qs40;
-        document.getElementById('test_title').innerText = (selectedMode === 50) ? "자아상태 검사" : "인생태도 검사";
-        var html = '';
-        for (var i = 0; i < list.length; i++) {
-            var num = i + 1;
-            html += '<div class="q-box"><div class="q-text">' + num + '. ' + list[i] + '</div><div class="q-ops">';
-            for (var v = 1; v <= 5; v++) {
-                var id = 'q' + num + '_' + v;
-                html += '<input type="radio" name="q' + num + '" id="' + id + '" value="' + v + '"><label for="' + id + '">' + v + '</label>';
+    const expertData = {
+        EGO: {
+            CP: { name: "통제적 부모 자아 (CP)", ranges: [
+                { min: 45, label: "매우 높음", text: "지나치게 엄격한 가치관을 가지고 있으며 완벽주의적 성향이 지배적입니다. 자신뿐만 아니라 타인에게도 높은 기준을 강요하여 위압감을 줄 수 있으며, 이는 대인관계의 갈등과 높은 내부 스트레스의 원인이 됩니다. '반드시 ~해야만 한다'는 당위적 사고를 완화하는 훈련이 필요합니다." },
+                { min: 35, label: "높음", text: "도덕성과 책임감이 강하고 질서를 중시합니다. 리더십이 있으나 때로 독단적이라는 평가를 받을 수 있으므로 타인의 의견을 경청하는 태도가 요구됩니다." },
+                { min: 25, label: "보통", text: "상식적인 선에서 질서를 준수하며 필요할 때 적절한 비판을 할 수 있는 균형 잡힌 상태입니다." },
+                { min: 0, label: "낮음", text: "규율이나 책임에 무관심해 보일 수 있으며 타인의 잘못에 대해 방관하거나 우유부단한 태도를 보일 수 있습니다." }]
+            },
+            NP: { name: "양육적 부모 자아 (NP)", ranges: [
+                { min: 45, label: "매우 높음", text: "헌신적이고 희생적이지만, 타인의 자립심을 저해하는 '과잉보호'의 위험이 큽니다. 상대방이 스스로 해결할 기회를 빼앗고 있지는 않은지 점검이 필요합니다." },
+                { min: 35, label: "높음", text: "공감 능력이 탁월하며 수용적인 태도로 주변 사람들에게 정서적 안정감을 제공합니다." },
+                { min: 25, label: "보통", text: "타인을 적절히 배려하면서도 개인의 경계를 유지할 줄 아는 건강한 조력자의 모습입니다." },
+                { min: 0, label: "낮음", text: "타인에게 냉담하거나 사무적인 태도를 보이며 정서적 유대감 형성에 어려움을 겪을 수 있습니다." }]
+            },
+            A: { name: "어른 자아 (A)", ranges: [
+                { min: 45, label: "매우 높음", text: "극도로 이성적이며 감정을 배제한 판단을 내립니다. 인간미가 부족하다는 평가를 받을 수 있으며, 모든 것을 데이터와 논리로만 해결하려 합니다." },
+                { min: 35, label: "높음", text: "현실 판단력이 우수하고 효율적으로 문제를 해결합니다. 감정에 휘둘리지 않는 철저한 계획성을 보입니다." },
+                { min: 25, label: "보통", text: "현실적이고 합리적이며, 일상적인 과업을 지혜롭게 수행합니다." },
+                { min: 0, label: "낮음", text: "충동에 좌우되기 쉽고 현실 판단력이 부족하여 계획성 없는 생활을 할 가능성이 높습니다." }]
+            },
+            FC: { name: "자유로운 어린이 자아 (FC)", ranges: [
+                { min: 45, label: "매우 높음", text: "매우 본능적이고 자기중심적인 돌발 행동을 할 수 있습니다. 즐거움을 추구하는 에너지는 높으나 주변 상황을 고려하지 않아 마찰이 생질 수 있습니다." },
+                { min: 35, label: "높음", text: "창의적이고 낙천적이며 유머 감각이 뛰어납니다. 삶의 활력을 주도적으로 찾아냅니다." },
+                { min: 25, label: "보통", text: "자발적이고 솔직한 감정 표현이 가능하며 적절한 생동감을 유지합니다." },
+                { min: 0, label: "낮음", text: "감정을 억제하고 위축되어 있으며 즐거움을 느끼는 능력이 저하되어 우울감을 느끼기 쉽습니다." }]
+            },
+            AC: { name: "순응하는 어린이 자아 (AC)", ranges: [
+                { min: 45, label: "매우 높음", text: "타인의 눈치를 과도하게 보며 거절을 전혀 하지 못합니다. 내면의 억압된 분노가 신체화 증상으로 나타날 위험이 매우 높은 상태입니다." },
+                { min: 35, label: "높음", text: "조직에 잘 순응하고 협조적이지만 내면에는 갈등이 쌓여 있을 가능성이 높습니다." },
+                { min: 25, label: "보통", text: "예의 바르고 사회적 조화를 중시하며 상황에 맞게 자신을 조절합니다." },
+                { min: 0, label: "낮음", text: "반항적이고 독단적이며 타인과의 협조가 어려운 상태일 수 있습니다." }]
             }
-            html += '</div></div>';
+        },
+        LP: {
+            U_P: { name: "자기긍정 (I am OK)", ranges: [
+                { min: 40, label: "매우 높음", text: "자신의 가치에 대해 확고한 확신을 가지고 있습니다. 실패 상황에서도 자아를 존중하며, 스스로에 대한 신뢰가 매우 높습니다. 다만 과도할 경우 타인의 조언을 무시할 수 있으니 주의가 필요합니다." },
+                { min: 30, label: "높음", text: "자신을 긍정적으로 바라보며 당당하게 의견을 표현합니다. 자존감이 안정적이고 건강한 상태입니다." },
+                { min: 20, label: "보통", text: "상황에 따라 자신감이 변동되기도 하지만 대체로 자신을 수용하는 평범한 수준입니다." },
+                { min: 0, label: "낮음", text: "자신을 비하하거나 부족하다고 느끼는 경향이 있습니다. 작은 실수에도 자책하기 쉬우며 타인의 평가에 지나치게 민감할 수 있습니다." }]
+            },
+            U_N: { name: "자기부정 (I am NOT OK)", ranges: [
+                { min: 40, label: "매우 높음", text: "내면의 열등감이 매우 깊고 스스로를 무가치하다고 여깁니다. 우울감이나 불안이 높을 수 있으며, 타인 앞에 서는 것을 극도로 두려워할 가능성이 큽니다." },
+                { min: 30, label: "높음", text: "스스로를 신뢰하지 못하고 위축되어 있습니다. 남들과 끊임없이 비교하며 불행을 느끼기 쉬운 상태입니다." },
+                { min: 20, label: "보통", text: "겸손한 편이지만 때로 자신감이 결여되는 지점이 있습니다." },
+                { min: 0, label: "낮음", text: "자기부정이 거의 없는 상태입니다. 자신의 단점까지도 객관적으로 수용하거나 크게 개의치 않습니다." }]
+            },
+            O_P: { name: "타인긍정 (You are OK)", ranges: [
+                { min: 40, label: "매우 높음", text: "타인에 대한 개방성과 신뢰가 매우 높습니다. 모든 사람을 긍정적으로 수용하려 하지만, 때로 사기를 당하거나 이용당할 위험이 있으니 현실적인 경계가 필요합니다." },
+                { min: 30, label: "높음", text: "인간관계가 원만하고 협력적입니다. 타인의 장점을 발견하는 능력이 뛰어나며 대화가 잘 통하는 성향입니다." },
+                { min: 20, label: "보통", text: "사회적 관계에서 기본적인 예의와 신뢰를 유지하는 표준적인 상태입니다." },
+                { min: 0, label: "낮음", text: "타인을 비판적으로 보거나 의심하는 경향이 있습니다. 사람들과 깊이 있는 관계를 맺는 것을 부담스러워할 수 있습니다." }]
+            },
+            O_N: { name: "타인부정 (You are NOT OK)", ranges: [
+                { min: 40, label: "매우 높음", text: "타인을 불신하고 적대적으로 대하거나 무시하는 성향이 강합니다. 지배적이고 공격적인 태도로 주변 사람들에게 상처를 줄 수 있으며 갈등의 중심이 되기 쉽습니다." },
+                { min: 30, label: "높음", text: "냉소적이고 비판적인 시각으로 사람들을 바라봅니다. 타인의 실수를 용납하기 힘들어하며 독단적인 모습을 보일 수 있습니다." },
+                { min: 20, label: "보통", text: "필요에 따라 타인에게 비판을 가하지만 감정적인 공격성은 절제된 상태입니다." },
+                { min: 0, label: "낮음", text: "타인을 부정적으로 보지 않습니다. 상대를 있는 그대로 인정하고 존중하려 노력하는 태도입니다." }]
+            }
         }
-        container.innerHTML = html;
+    };
+
+    function decodeAndAdd() {
+        const code = document.getElementById('inputCode').value.trim();
+        try {
+            const decoded = JSON.parse(decodeURIComponent(escape(atob(code))));
+            db.push(decoded);
+            localStorage.setItem('Psych_Expert_DB_V6', JSON.stringify(db));
+            document.getElementById('inputCode').value = '';
+            renderList();
+        } catch(e) { alert("코드를 다시 확인해 주세요."); }
     }
 
-    function finish() {
-        var scores = (selectedMode === 50) ? { CP: 0, NP: 0, A: 0, FC: 0, AC: 0 } : { U_P: 0, U_N: 0, O_P: 0, O_N: 0 };
-        var keys50 = { CP: [2,7,9,15,19,23,25,31,42,44], NP: [4,11,14,17,24,28,35,40,45,50], A: [1,5,12,20,26,29,34,36,39,46], FC: [3,10,16,18,22,27,33,38,43,48], AC: [6,8,13,21,30,32,37,41,47,49] };
-        var keys40 = { O_P: [2,6,10,14,18,22,26,30,34,38], O_N: [1,5,9,13,17,21,25,29,33,37], U_P: [3,7,11,15,19,23,27,31,35,39], U_N: [4,8,12,16,20,24,28,32,36,40] };
-        var keys = (selectedMode === 50) ? keys50 : keys40;
+    function renderList() {
+        const list = document.getElementById('userList');
+        list.innerHTML = '';
+        db.forEach((item, i) => {
+            const div = document.createElement('div');
+            div.className = `user-item ${activeIdx === i ? 'active' : ''}`;
+            div.onclick = () => selectUser(i);
+            div.innerHTML = `<h4>${item.n} (${item.g})</h4><p style="font-size:0.85em; color:#666;">${item.d} | ${item.type === 'EGO' ? '에고그램' : '인생태도'}</p>`;
+            list.appendChild(div);
+        });
+    }
 
-        for (var i = 1; i <= selectedMode; i++) {
-            var sel = document.querySelector('input[name="q' + i + '"]:checked');
-            if (!sel) { alert(i + "번 문항이 누락되었습니다."); return; }
-            var v = parseInt(sel.value);
-            for (var k in keys) { if (keys[k].indexOf(i) !== -1) scores[k] += v; }
+    function selectUser(i) {
+        activeIdx = i;
+        const data = db[i];
+        document.getElementById('detailView').style.display = 'block';
+        document.getElementById('viewName').innerText = `${data.n} 님의 심층 심리 리포트`;
+        
+        // [수정 포인트] 연락처(data.t) 표시 기능 추가
+        const phoneInfo = data.t ? ` | 연락처: ${data.t}` : "";
+        document.getElementById('viewInfo').innerText = `${data.a}세 | ${data.g}성${phoneInfo} | 검사일: ${data.d}`;
+        
+        document.getElementById('adminMemo').value = data.memo || '';
+        renderChart(data);
+        renderExpertAnalysis(data);
+        renderList();
+        if(window.innerWidth < 1024) document.getElementById('detailView').scrollIntoView({behavior: "smooth"});
+    }
+
+    function renderExpertAnalysis(data) {
+        const container = document.getElementById('analysisContainer');
+        container.innerHTML = '';
+        
+        if(data.type === 'LP') {
+            const s = data.s;
+            let title = "", desc = "", tip = "";
+            if(s.U_P >= 30 && s.O_P >= 30) {
+                title = "I+ U+ (자기긍정-타인긍정): 건강한 조화형";
+                desc = "나와 타인 모두를 소중히 여기는 가장 이상적인 상태입니다. 건설적이고 개방적인 태도를 지녀 원만한 대인관계와 정서적 안정을 누리고 있습니다. 갈등 해결 능력이 뛰어나며 자아 실현 의지가 강합니다.";
+                tip = "현재의 균형 잡힌 태도를 유지하며 리더로서 주변에 긍정적인 영향력을 전파하세요.";
+            } else if(s.U_P >= 30 && s.O_P < 30) {
+                title = "I+ U- (자기긍정-타인부정): 지배적 투사형";
+                desc = "나는 옳고 남은 틀렸다고 생각하는 독단적인 태도입니다. 자부심은 높으나 타인을 비판하거나 무시하여 고립될 위험이 큽니다. 자신의 문제를 남의 탓으로 돌리는 경향이 있을 수 있습니다.";
+                tip = "상대방의 의견에 경청하고, 다름이 틀림이 아님을 인정하는 수용성 훈련이 필요합니다.";
+            } else if(s.U_P < 30 && s.O_P >= 30) {
+                title = "I- U+ (자기부정-타인긍정): 의존형/자기희생형";
+                desc = "남은 훌륭하고 나는 부족하다고 느끼는 태도입니다. 타인의 인정에 지나치게 목말라하며 거절을 못하고 희생하는 경향이 있습니다. 내면의 억압된 분노가 쌓여 무기력해질 수 있습니다.";
+                tip = "자신의 사소한 장점부터 기록하고 'No'라고 말할 수 있는 단호함 훈련이 중요합니다.";
+            } else {
+                title = "I- U- (자기부정-타인부정): 허무적 회피형";
+                desc = "나도 싫고 세상도 싫은 체념한 상태입니다. 극심한 고립감이나 허무주의에 빠지기 쉬우며, 대인관계를 아예 회피할 수 있습니다. 삶의 에너지가 매우 낮은 위기 상태일 수 있습니다.";
+                tip = "전문적인 상담과 병행하여 산책이나 취미 활동 등 아주 작은 즐거움부터 회복하는 에너지가 필요합니다.";
+            }
+            const box = document.createElement('div');
+            box.className = 'lp-summary-box';
+            box.innerHTML = `<h3 style="color:var(--primary); margin-bottom:10px;">${title}</h3><p class="description">${desc}</p><div class="training-tip"><b>💡 관리 가이드:</b> ${tip}</div>`;
+            container.appendChild(box);
         }
 
-        var data = { n: document.getElementById('u_name').value, a: document.getElementById('u_age').value, g: document.getElementById('u_gender').value, t: document.getElementById('u_tel').value, d: new Date().toLocaleDateString(), s: scores, ver: selectedMode, type: (selectedMode === 50) ? "EGO" : "LP" };
-        document.getElementById('resCode').value = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        goStep(3);
+        const type = data.type === 'EGO' ? 'EGO' : 'LP';
+        for(let key in expertData[type]) {
+            const score = data.s[key];
+            const meta = expertData[type][key];
+            const range = meta.ranges.find(r => score >= r.min) || meta.ranges[meta.ranges.length - 1];
+            const levelClass = score >= 40 ? 'v-high' : (score >= 30 ? 'high' : (score >= 20 ? 'mid' : (score >= 10 ? 'low' : 'v-low')));
+            const div = document.createElement('div');
+            div.className = `analysis-item ${levelClass}`;
+            div.innerHTML = `<div><span class="score-badge">${score}점 [${range.label}]</span><strong>${meta.name}</strong></div><div class="description">${range.text}</div>`;
+            container.appendChild(div);
+        }
     }
 
-    function copyCode() {
-        var el = document.getElementById('resCode');
-        el.select();
-        document.execCommand('copy');
-        document.getElementById('copyMsg').style.display = 'block';
-        setTimeout(function() { document.getElementById('copyMsg').style.display = 'none'; }, 2000);
+    function renderChart(data) {
+        const ctx = document.getElementById('resultChart').getContext('2d');
+        if(myChart) myChart.destroy();
+        const labels = data.type === 'EGO' ? ['CP', 'NP', 'A', 'FC', 'AC'] : ['U_P', 'U_N', 'O_P', 'O_N'];
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '점수',
+                    data: labels.map(l => data.s[l]),
+                    backgroundColor: 'rgba(55, 48, 163, 0.7)',
+                    borderColor: '#3730a3',
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { y: { beginAtZero: true, max: 50, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } },
+                plugins: { legend: { display: false } }
+            }
+        });
     }
 
-    function goHome() {
-        if (!confirm("처음으로 돌아가시겠습니까?")) return;
-        selectedMode = null;
-        document.querySelectorAll('.mode-card').forEach(function(c) { c.classList.remove('selected'); });
-        document.getElementById('u_name').value = ""; document.getElementById('u_age').value = ""; document.getElementById('u_tel').value = "";
-        goStep(1);
+    function saveMemo() {
+        if(activeIdx === null) return;
+        db[activeIdx].memo = document.getElementById('adminMemo').value;
+        localStorage.setItem('Psych_Expert_DB_V6', JSON.stringify(db));
+        alert("리포트가 안전하게 저장되었습니다.");
     }
+
+    renderList();
 </script>
 </body>
 </html>
